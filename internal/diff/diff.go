@@ -1,4 +1,4 @@
-package main
+package diff
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -31,67 +30,44 @@ type Options struct {
 	Kubeconfig string
 	Namespace  string
 	Token      string
-	Version    bool
 }
 
-func main() {
-	opts := &Options{}
-
-	pflag.StringSliceVarP(&opts.Filename, "filename", "f", []string{}, "Filename, directory, or URL to files to compare")
-	pflag.BoolVarP(&opts.Recursive, "recursive", "R", false, "Process the directory used in -f, --filename recursively")
-	pflag.StringVar(&opts.Cluster, "cluster", "", "The name of the kubeconfig cluster to use")
-	pflag.StringVar(&opts.Context, "context", "", "The name of the kubeconfig context to use")
-	pflag.StringVar(&opts.Kubeconfig, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
-	pflag.StringVarP(&opts.Namespace, "namespace", "n", "", "If present, the namespace scope for this CLI request")
-	pflag.StringVar(&opts.Token, "token", "", "Bearer token for authentication to the API server")
-	pflag.BoolVar(&opts.Version, "version", false, "Print version information and quit")
-
-	pflag.Parse()
-
-	if opts.Version {
-		fmt.Println("kubediff version 1.0.0")
-		os.Exit(0)
-	}
-
-	if len(opts.Filename) == 0 {
-		fmt.Fprintf(os.Stderr, "Error: must specify at least one filename\n")
-		os.Exit(1)
-	}
-
-	if err := run(opts); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-func run(opts *Options) error {
+func Run(opts *Options) (int, error) {
 	config, err := buildConfig(opts)
 	if err != nil {
-		return fmt.Errorf("failed to build config: %w", err)
+		return 2, fmt.Errorf("failed to build config: %w", err)
 	}
 
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to create dynamic client: %w", err)
+		return 2, fmt.Errorf("failed to create dynamic client: %w", err)
 	}
 
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to create discovery client: %w", err)
+		return 2, fmt.Errorf("failed to create discovery client: %w", err)
 	}
 
 	files, err := expandFilenames(opts.Filename, opts.Recursive)
 	if err != nil {
-		return fmt.Errorf("failed to expand filenames: %w", err)
+		return 2, fmt.Errorf("failed to expand filenames: %w", err)
 	}
 
+	hasDiff := false
 	for _, file := range files {
-		if err := processFile(file, opts, dynamicClient, discoveryClient); err != nil {
-			return fmt.Errorf("failed to process file %s: %w", file, err)
+		diffFound, err := processFile(file, opts, dynamicClient, discoveryClient)
+		if err != nil {
+			return 2, fmt.Errorf("failed to process file %s: %w", file, err)
+		}
+		if diffFound {
+			hasDiff = true
 		}
 	}
 
-	return nil
+	if hasDiff {
+		return 1, nil
+	}
+	return 0, nil
 }
 
 func buildConfig(opts *Options) (*rest.Config, error) {
@@ -162,12 +138,13 @@ func expandFilenames(filenames []string, recursive bool) ([]string, error) {
 	return files, nil
 }
 
-func processFile(filename string, opts *Options, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface) error {
+func processFile(filename string, opts *Options, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface) (bool, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		return false, fmt.Errorf("failed to read file: %w", err)
 	}
 
+	hasDiff := false
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(data)), 4096)
 	for {
 		var obj unstructured.Unstructured
@@ -176,27 +153,31 @@ func processFile(filename string, opts *Options, dynamicClient dynamic.Interface
 			if err.Error() == "EOF" {
 				break
 			}
-			return fmt.Errorf("failed to decode YAML: %w", err)
+			return false, fmt.Errorf("failed to decode YAML: %w", err)
 		}
 
 		if obj.GetKind() == "" {
 			continue
 		}
 
-		if err := diffObject(&obj, opts, dynamicClient, discoveryClient); err != nil {
-			return fmt.Errorf("failed to diff object %s/%s: %w", obj.GetKind(), obj.GetName(), err)
+		diffFound, err := diffObject(&obj, opts, dynamicClient, discoveryClient)
+		if err != nil {
+			return false, fmt.Errorf("failed to diff object %s/%s: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		if diffFound {
+			hasDiff = true
 		}
 	}
 
-	return nil
+	return hasDiff, nil
 }
 
-func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface) error {
+func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface) (bool, error) {
 	gvk := fileObj.GroupVersionKind()
 
 	gvr, isNamespaced, err := getGVRAndScope(gvk, discoveryClient)
 	if err != nil {
-		return fmt.Errorf("failed to get GVR for %s: %w", gvk, err)
+		return false, fmt.Errorf("failed to get GVR for %s: %w", gvk, err)
 	}
 
 	namespace := fileObj.GetNamespace()
@@ -219,7 +200,7 @@ func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient
 		if errors.IsNotFound(err) {
 			clusterObj = &unstructured.Unstructured{}
 		} else {
-			return fmt.Errorf("failed to get object from cluster: %w", err)
+			return false, fmt.Errorf("failed to get object from cluster: %w", err)
 		}
 	} else {
 		clusterObj = fetchedObj.DeepCopy()
@@ -289,15 +270,15 @@ func getGVRAndScope(gvk schema.GroupVersionKind, discoveryClient discovery.Disco
 	return nil, false, fmt.Errorf("resource not found for kind %s", gvk.Kind)
 }
 
-func executeDiff(fileObj, clusterObj *unstructured.Unstructured, kind, name string) error {
+func executeDiff(fileObj, clusterObj *unstructured.Unstructured, kind, name string) (bool, error) {
 	cacheDir := filepath.Join(os.Getenv("HOME"), ".kube", "cache")
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		return fmt.Errorf("failed to create cache directory: %w", err)
+		return false, fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
 	fileYAML, err := kyaml.Marshal(fileObj.Object)
 	if err != nil {
-		return fmt.Errorf("failed to marshal file object: %w", err)
+		return false, fmt.Errorf("failed to marshal file object: %w", err)
 	}
 
 	var clusterYAML []byte
@@ -307,30 +288,30 @@ func executeDiff(fileObj, clusterObj *unstructured.Unstructured, kind, name stri
 		var err error
 		clusterYAML, err = kyaml.Marshal(clusterObj.Object)
 		if err != nil {
-			return fmt.Errorf("failed to marshal cluster object: %w", err)
+			return false, fmt.Errorf("failed to marshal cluster object: %w", err)
 		}
 	}
 
 	fileTemp, err := ioutil.TempFile(cacheDir, fmt.Sprintf("%s-%s-file-*.yaml", kind, name))
 	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
+		return false, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer os.Remove(fileTemp.Name())
 	defer fileTemp.Close()
 
 	clusterTemp, err := ioutil.TempFile(cacheDir, fmt.Sprintf("%s-%s-cluster-*.yaml", kind, name))
 	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
+		return false, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer os.Remove(clusterTemp.Name())
 	defer clusterTemp.Close()
 
 	if _, err := fileTemp.Write(fileYAML); err != nil {
-		return fmt.Errorf("failed to write file temp: %w", err)
+		return false, fmt.Errorf("failed to write file temp: %w", err)
 	}
 
 	if _, err := clusterTemp.Write(clusterYAML); err != nil {
-		return fmt.Errorf("failed to write cluster temp: %w", err)
+		return false, fmt.Errorf("failed to write cluster temp: %w", err)
 	}
 
 	fileTemp.Close()
@@ -349,11 +330,13 @@ func executeDiff(fileObj, clusterObj *unstructured.Unstructured, kind, name stri
 	if err := cmd.Run(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if exitError.ExitCode() == 1 {
-				return nil
+				// Exit code 1 means differences found
+				return true, nil
 			}
 		}
-		return fmt.Errorf("diff command failed: %w", err)
+		return false, fmt.Errorf("diff command failed: %w", err)
 	}
 
-	return nil
+	// Exit code 0 means no differences
+	return false, nil
 }
