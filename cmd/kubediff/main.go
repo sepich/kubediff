@@ -34,7 +34,6 @@ func main() {
 	exitCode, err := diff.Run(opts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(exitCode)
 	}
 	os.Exit(exitCode)
 }
