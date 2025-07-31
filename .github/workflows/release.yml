@@ -19,6 +19,18 @@ jobs:
       with:
         go-version: '1.24'
 
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
     - name: Build binaries
       run: |
         GOOS=linux GOARCH=amd64 make build && tar -czf kubediff-linux-amd64.tar.gz kubediff
