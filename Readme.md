@@ -47,7 +47,7 @@ That's why `patch` permission is needed for `kubectl diff`.
 ### Usage
 You can download precompiled binary from [Releases](https://github.com/sepich/kubediff/releases) section or compile via:
 ```bash
-go install github.com/sepich/kubediff/cmd/kubediff
+go install github.com/sepich/kubediff/cmd/kubediff@latest
 ```
 Usual cli args from `kubectl diff` are available:
 ```bash

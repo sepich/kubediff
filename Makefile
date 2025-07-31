@@ -1,4 +1,4 @@
-VER ?= `git show -s --format=%cd-%h --date=format:%y%m%d`
+VER ?= `git describe --tags --dirty --always`
 
 help: ## Displays help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-z0-9A-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -15,3 +15,11 @@ build: test ## Build binaries with version set
 test: ## Run tests
 	@go vet ./...
 	@go test ./...
+
+tag: ## Create a new git tag with the new version
+	@v=$$(echo ${VER} | sed -r 's/([^-]+)(-.+)?/\1/') && \
+	IFS='.' read -r a b c <<< "$$v" && \
+	c=$$((c + 1)) && v="$$a.$$b.$$c" && \
+	echo "Creating new tag: $$v" && \
+	git tag -a $$v -m "Release $$v" && \
+	git push origin $$v
