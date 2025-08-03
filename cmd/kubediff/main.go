@@ -14,7 +14,7 @@ import (
 func main() {
 	var err error
 	d := &diff.Diff{}
-	var filename = pflag.StringSliceP("filename", "f", []string{}, "Filename, directory, or URL to files to compare")
+	var filename = pflag.StringSliceP("filename", "f", []string{}, "Filename or directory with files to compare")
 	var recursive = pflag.BoolP("recursive", "R", false, "Process the directory used in -f, --filename recursively")
 	pflag.BoolVarP(&d.SkipSecrets, "skip-secrets", "", false, "Skip comparing of Secrets (no permission to read them)")
 	pflag.StringVar(&d.Cluster, "cluster", "", "The name of the kubeconfig cluster to use")
@@ -22,7 +22,7 @@ func main() {
 	pflag.StringVar(&d.Kubeconfig, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	pflag.StringVarP(&d.Namespace, "namespace", "n", "", "If present, the namespace scope for this CLI request")
 	pflag.StringVar(&d.Token, "token", "", "Bearer token for authentication to the API server")
-	var filterfile = pflag.StringP("filter-file", "", "", "Path to a filter yml file to apply defaults before comparing (by default built-in is used)")
+	var filterfile = pflag.StringP("filter-file", "", "", "Path to a filter yml file to apply defaults before comparing (default built-in)")
 	var ver = pflag.BoolP("version", "v", false, "Show version and exit")
 	pflag.Parse()
 	if *ver {

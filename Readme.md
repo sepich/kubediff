@@ -47,10 +47,10 @@ Example for [cert-manager.io/inject-ca-from-secret](https://cert-manager.io/docs
 And that's why `patch` permission is needed for `kubectl diff`.
 
 To reduce amount of false-positives, `kubediff` has built-in filter with "defaults" for most used k8s Kinds:  
-- you can see it in [filter.yml](./internal/diff/filter.yml)
+- you can see it in [filter.yml](./internal/filter/filter.yml)
 - it works like this:
   - when `Yaml file` has no field defined, and `cluster object` has value same as in `filter.yml` (i.e it is a default value) then field is skipped in diff
-  - filter value `"*"` for field means - skip any `cluster` value, if not defined in `yaml`
+  - filter field with value `"*"` means - skip any `cluster` value, if field is not defined in `yaml`
 - to see full non-filtered diff (as above) you can specify empty file for filter: `--filter-file=/dev/null`
 - to hide changes caused by your custom Mutations use your own file in `--filter-file=`
 
@@ -63,12 +63,14 @@ Usual cli args from `kubectl diff` are available:
 ```bash
 $ kubediff -h
 Usage of ./kubediff:
-      --cluster string      The name of the kubeconfig cluster to use
-      --context string      The name of the kubeconfig context to use
-  -f, --filename strings    Filename, directory, or URL to files to compare
-      --kubeconfig string   Path to the kubeconfig file to use for CLI requests
-  -n, --namespace string    If present, the namespace scope for this CLI request
-  -R, --recursive           Process the directory used in -f, --filename recursively
-      --token string        Bearer token for authentication to the API server
-  -v, --version             Show version and exit
+      --cluster string       The name of the kubeconfig cluster to use
+      --context string       The name of the kubeconfig context to use
+  -f, --filename strings     Filename or directory with files to compare
+      --filter-file string   Path to a filter yml file to apply defaults before comparing (default built-in)
+      --kubeconfig string    Path to the kubeconfig file to use for CLI requests
+  -n, --namespace string     If present, the namespace scope for this CLI request
+  -R, --recursive            Process the directory used in -f, --filename recursively
+      --skip-secrets         Skip comparing of Secrets (no permission to read them)
+      --token string         Bearer token for authentication to the API server
+  -v, --version              Show version and exit
 ```
