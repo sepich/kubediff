@@ -6,7 +6,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 func getClients(opts *Options) (dynamic.Interface, discovery.DiscoveryInterface, error) {
@@ -33,11 +32,9 @@ func buildConfig(opts *Options) (*rest.Config, error) {
 		loadingRules.ExplicitPath = opts.Kubeconfig
 	}
 
-	configOverrides := &clientcmd.ConfigOverrides{
-		ClusterInfo: clientcmdapi.Cluster{},
-		Context: clientcmdapi.Context{
-			Namespace: opts.Namespace,
-		},
+	configOverrides := &clientcmd.ConfigOverrides{}
+	if opts.Namespace != "" {
+		configOverrides.Context.Namespace = opts.Namespace
 	}
 
 	if opts.Context != "" {
@@ -53,5 +50,8 @@ func buildConfig(opts *Options) (*rest.Config, error) {
 	}
 
 	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	if opts.Namespace == "" {
+		opts.Namespace, _, _ = clientConfig.Namespace()
+	}
 	return clientConfig.ClientConfig()
 }

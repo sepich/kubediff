@@ -14,6 +14,7 @@ func main() {
 
 	pflag.StringSliceVarP(&opts.Filename, "filename", "f", []string{}, "Filename, directory, or URL to files to compare")
 	pflag.BoolVarP(&opts.Recursive, "recursive", "R", false, "Process the directory used in -f, --filename recursively")
+	pflag.BoolVarP(&opts.SkipSecrets, "skip-secrets", "", false, "Skip comparing of Secrets (no permission to read them)")
 	pflag.StringVar(&opts.Cluster, "cluster", "", "The name of the kubeconfig cluster to use")
 	pflag.StringVar(&opts.Context, "context", "", "The name of the kubeconfig context to use")
 	pflag.StringVar(&opts.Kubeconfig, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")

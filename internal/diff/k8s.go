@@ -36,6 +36,7 @@ func normalizeObject(obj *unstructured.Unstructured) *unstructured.Unstructured 
 		delete(metadata, "creationTimestamp")
 		delete(metadata, "generation")
 		delete(metadata, "managedFields")
+		delete(metadata, "namespace")
 
 		// Remove ignored annotations
 		if annotations, ok := metadata["annotations"].(map[string]interface{}); ok {

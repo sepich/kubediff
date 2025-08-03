@@ -3,7 +3,7 @@ VER ?= `git describe --tags --dirty --always`
 help: ## Displays help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-z0-9A-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-build: test ## Build binaries with version set
+build: ## Build binaries with version set
 	@CGO_ENABLED=0 go build -o kubediff -ldflags "-w -s \
 	-X github.com/prometheus/common/version.Version=${VER} \
 	-X github.com/prometheus/common/version.Revision=`git rev-parse --short HEAD` \

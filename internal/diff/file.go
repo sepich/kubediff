@@ -1,15 +1,18 @@
 package diff
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 func expandFilenames(filenames []string, recursive bool) ([]string, error) {
@@ -51,22 +54,12 @@ func processFile(filename string, opts *Options, dynamicClient dynamic.Interface
 	}
 
 	hasDiff := false
-	decoder := yaml.NewYAMLOrJSONDecoder(f, 4096)
-	for {
-		var obj unstructured.Unstructured
-		err := decoder.Decode(&obj)
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-			return false, fmt.Errorf("failed to decode YAML: %w", err)
+	for obj := range objectsFromYaml(f) {
+		if obj == nil {
+			return false, errors.New("failed to decode YAML")
 		}
 
-		if obj.GetKind() == "" {
-			continue
-		}
-
-		diffFound, err := diffObject(&obj, opts, dynamicClient, discoveryClient)
+		diffFound, err := diffObject(obj, opts, dynamicClient, discoveryClient)
 		if err != nil {
 			return false, fmt.Errorf("failed to diff object %s/%s: %w", obj.GetKind(), obj.GetName(), err)
 		}
@@ -76,4 +69,31 @@ func processFile(filename string, opts *Options, dynamicClient dynamic.Interface
 	}
 
 	return hasDiff, nil
+}
+
+func objectsFromYaml(r io.Reader) chan *unstructured.Unstructured {
+	ch := make(chan *unstructured.Unstructured)
+	go func() {
+		defer close(ch)
+		decoder := yaml.NewYAMLOrJSONDecoder(r, 4096)
+		for {
+			var obj unstructured.Unstructured
+			err := decoder.Decode(&obj)
+			if err != nil {
+				if err.Error() == "EOF" {
+					break
+				}
+				fmt.Fprintf(os.Stderr, "error decoding YAML: %v\n", err)
+				ch <- nil
+				return
+			}
+
+			if obj.GetKind() == "" {
+				continue
+			}
+
+			ch <- &obj
+		}
+	}()
+	return ch
 }

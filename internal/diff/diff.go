@@ -2,6 +2,7 @@ package diff
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,14 +16,27 @@ import (
 	kyaml "sigs.k8s.io/yaml"
 )
 
+//go:embed filter.yml
+var filterYAML []byte
+
+var filterObjects map[string]*unstructured.Unstructured
+
+func init() {
+	filterObjects = make(map[string]*unstructured.Unstructured)
+	for obj := range objectsFromYaml(strings.NewReader(string(filterYAML))) {
+		filterObjects[obj.GetKind()] = obj
+	}
+}
+
 type Options struct {
-	Filename   []string
-	Recursive  bool
-	Cluster    string
-	Context    string
-	Kubeconfig string
-	Namespace  string
-	Token      string
+	Filename    []string
+	Recursive   bool
+	Cluster     string
+	Context     string
+	Kubeconfig  string
+	Namespace   string
+	Token       string
+	SkipSecrets bool
 }
 
 func Run(opts *Options) (int, error) {
@@ -56,6 +70,10 @@ func Run(opts *Options) (int, error) {
 // diffObject compares a obj with the cluster state, and returns true if there are differences.
 func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface) (bool, error) {
 	gvk := fileObj.GroupVersionKind()
+	if gvk.Kind == "Secret" && gvk.Group == "" && opts.SkipSecrets {
+		fmt.Fprintf(os.Stderr, "Skipping Secret: %s/%s\n", opts.Namespace, fileObj.GetName())
+		return false, nil
+	}
 
 	gvr, isNamespaced, err := getGVRAndScope(gvk, discoveryClient)
 	if err != nil {
@@ -84,6 +102,7 @@ func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient
 		}
 	}
 
+	clusterObj = applyFiltering(fileObj, clusterObj)
 	return executeDiff(normalizeObject(fileObj), normalizeObject(clusterObj))
 }
 

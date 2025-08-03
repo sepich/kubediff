@@ -111,6 +111,10 @@ func TestExecuteDiff(t *testing.T) {
 		},
 	}
 
+	oldEnv := os.Getenv("KUBECTL_EXTERNAL_DIFF")
+	defer func() {
+		os.Setenv("KUBECTL_EXTERNAL_DIFF", oldEnv)
+	}()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.envDiffCmd != "" {
