@@ -17,7 +17,7 @@ test: ## Run tests
 	@go test ./internal/...
 
 tag: ## Create a new git tag with the new version
-	@echo ${VER} | grep -q dirty || { echo "No changes since last tag"; exit 1; }
+	@echo ${VER} | grep -q '\-' || { echo "No changes since last tag"; exit 1; }
 	@v=$$(echo ${VER} | sed -r 's/([^-]+)(-.+)?/\1/') && \
 	IFS='.' read -r a b c <<< "$$v" && \
 	c=$$((c + 1)) && v="$$a.$$b.$$c" && \

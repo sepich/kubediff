@@ -1,8 +1,8 @@
 kubediff
 ========
 
-This is a `kubectl diff` alternative that does not [need patch permission](https://github.com/kubernetes/kubectl/issues/981) to operate.  
-Ideal for CI environments with **read-only** access where you want to view diffs in a merge request.
+This is a `kubectl diff` alternative that does not [need patch permission](https://github.com/kubernetes/kubectl/issues/981) to operate.    
+Ideal for CI environments with **read-only** access where you want to view diffs in a merge request.  
 "No Secrets" access mode is also supported.
 
 ### How it works
