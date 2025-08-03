@@ -1,0 +1,808 @@
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: "*"
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "*"
+        meta.helm.sh/release-name: "*"
+        meta.helm.sh/release-namespace: "*"
+      labels:
+        helm.sh/chart: "*"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      containers:
+      - imagePullPolicy: "$"
+        env:
+          - valueFrom:
+              fieldRef:
+                apiVersion: v1
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        startupProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        ports:
+          - protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - imagePullPolicy: "$"
+        env:
+          - valueFrom:
+              fieldRef:
+                apiVersion: v1
+        resources: {}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        startupProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        ports:
+          - protocol: TCP
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: "$"
+      serviceAccountName: "$"
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+          secret:
+            defaultMode: 420
+---
+apiVersion: apps/v1
+kind: StatefulSet
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  template:
+    metadata:
+      creationTimestamp: "*"
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "*"
+        meta.helm.sh/release-name: "*"
+        meta.helm.sh/release-namespace: "*"
+      labels:
+        helm.sh/chart: "*"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      containers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      initContainers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: "$"
+      serviceAccountName: "$"
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+          secret:
+            defaultMode: 420
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        creationTimestamp: null
+      spec:
+        volumeMode: Filesystem
+---
+apiVersion: batch/v1
+kind: CronJob
+spec:
+  concurrencyPolicy: Allow
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      creationTimestamp: null
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "*"
+        meta.helm.sh/release-name: "*"
+        meta.helm.sh/release-namespace: "*"
+      labels:
+        helm.sh/chart: "*"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      template:
+        metadata:
+          creationTimestamp: null
+          annotations:
+            kubectl.kubernetes.io/restartedAt: "*"
+            meta.helm.sh/release-name: "*"
+            meta.helm.sh/release-namespace: "*"
+          labels:
+            helm.sh/chart: "*"
+            app.kubernetes.io/managed-by: Helm
+        spec:
+          containers:
+            - imagePullPolicy: "$"
+              env:
+                - valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+              resources: {}
+              livenessProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /
+                  scheme: HTTP
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              readinessProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /
+                  scheme: HTTP
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              startupProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /
+                  scheme: HTTP
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              ports:
+                - protocol: TCP
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          initContainers:
+            - imagePullPolicy: "$"
+              env:
+                - valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+              resources: {}
+              livenessProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /
+                  scheme: HTTP
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              readinessProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /
+                  scheme: HTTP
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              startupProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /
+                  scheme: HTTP
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              ports:
+                - protocol: TCP
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          schedulerName: default-scheduler
+          securityContext: {}
+          serviceAccount: "$"
+          serviceAccountName: "$"
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - configMap:
+                defaultMode: 420
+              secret:
+                defaultMode: 420
+  successfulJobsHistoryLimit: 3
+  suspend: false
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    batch.kubernetes.io/controller-uid: "*"
+    batch.kubernetes.io/job-name: "*"
+    controller-uid: "*"
+    job-name: "*"
+spec:
+  backoffLimit: 6
+  completionMode: NonIndexed
+  completions: 1
+  manualSelector: false
+  parallelism: 1
+  podReplacementPolicy: TerminatingOrFailed
+  selector:
+    matchLabels:
+      batch.kubernetes.io/controller-uid: "*"
+  suspend: false
+  template:
+    metadata:
+      creationTimestamp: null
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "*"
+        meta.helm.sh/release-name: "*"
+        meta.helm.sh/release-namespace: "*"
+      labels:
+        batch.kubernetes.io/controller-uid: "*"
+        batch.kubernetes.io/job-name: "*"
+        controller-uid: "*"
+        job-name: "*"
+        helm.sh/chart: "*"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      containers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      initContainers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: "$"
+      serviceAccountName: "$"
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+          secret:
+            defaultMode: 420
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    deprecated.daemonset.template.generation: "*"
+spec:
+  revisionHistoryLimit: 10
+  template:
+    metadata:
+      creationTimestamp: "*"
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "*"
+        meta.helm.sh/release-name: "*"
+        meta.helm.sh/release-namespace: "*"
+      labels:
+        helm.sh/chart: "*"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      containers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      initContainers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: "$"
+      serviceAccountName: "$"
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+          secret:
+            defaultMode: 420
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+spec:
+  replicas: 1
+  template:
+    metadata:
+      creationTimestamp: "*"
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "*"
+        meta.helm.sh/release-name: "*"
+        meta.helm.sh/release-namespace: "*"
+      labels:
+        helm.sh/chart: "*"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      containers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      initContainers:
+        - imagePullPolicy: "$"
+          env:
+            - valueFrom:
+                fieldRef:
+                  apiVersion: v1
+          resources: {}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: "$"
+      serviceAccountName: "$"
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+          secret:
+            defaultMode: 420
+---
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - imagePullPolicy: "$"
+      env:
+        - valueFrom:
+            fieldRef:
+              apiVersion: v1
+      resources: {}
+      livenessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /
+          scheme: HTTP
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      readinessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /
+          scheme: HTTP
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      startupProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /
+          scheme: HTTP
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      ports:
+        - protocol: TCP
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts: "*"
+  initContainers:
+    - imagePullPolicy: "$"
+      env:
+        - valueFrom:
+            fieldRef:
+              apiVersion: v1
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts: "*"
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  nodeName: "*"
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  priorityClassName: default
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: "$"
+  serviceAccountName: "$"
+  terminationGracePeriodSeconds: 30
+  tolerations: "*"
+  volumes:
+    - configMap:
+        defaultMode: 420
+      secret:
+        defaultMode: 420
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service.beta.kubernetes.io/hash: "*"
+spec:
+  clusterIP: "*"
+  clusterIPs: "*"
+  internalTrafficPolicy: Cluster
+  ipFamilies: "*"
+  ipFamilyPolicy: SingleStack
+  ports:
+    - protocol: TCP
+      targetPort: "$"
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+webhooks:
+  - clientConfig:
+      caBundle: "*"
+      service:
+        port: 443
+    namespaceSelector: {}
+    objectSelector: {}
+    reinvocationPolicy: Never
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+webhooks:
+  - clientConfig:
+      caBundle: "*"
+      service:
+        port: 443
+    namespaceSelector: {}
+    objectSelector: {}
+    timeoutSeconds: 10
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+spec:
+  conversion:
+    strategy: None
+  names:
+    listKind: "$"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    kubernetes.io/metadata.name: "*"
+spec: "*"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+preemptionPolicy: PreemptLowerPriority
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.uid: "*"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+spec:
+  behavior:
+    scaleDown:
+      selectPolicy: Max
+    scaleUp:
+      selectPolicy: Max
+      stabilizationWindowSeconds: 0
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: 80
+          type: Utilization
+      type: Resource
