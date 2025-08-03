@@ -8,8 +8,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func getClients(opts *Options) (dynamic.Interface, discovery.DiscoveryInterface, error) {
-	config, err := buildConfig(opts)
+func (d *Diff) getClients() (dynamic.Interface, discovery.DiscoveryInterface, error) {
+	config, err := d.buildConfig()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build config: %w", err)
 	}
@@ -26,32 +26,32 @@ func getClients(opts *Options) (dynamic.Interface, discovery.DiscoveryInterface,
 	return dynamicClient, discoveryClient, nil
 }
 
-func buildConfig(opts *Options) (*rest.Config, error) {
+func (d *Diff) buildConfig() (*rest.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	if opts.Kubeconfig != "" {
-		loadingRules.ExplicitPath = opts.Kubeconfig
+	if d.Kubeconfig != "" {
+		loadingRules.ExplicitPath = d.Kubeconfig
 	}
 
 	configOverrides := &clientcmd.ConfigOverrides{}
-	if opts.Namespace != "" {
-		configOverrides.Context.Namespace = opts.Namespace
+	if d.Namespace != "" {
+		configOverrides.Context.Namespace = d.Namespace
 	}
 
-	if opts.Context != "" {
-		configOverrides.CurrentContext = opts.Context
+	if d.Context != "" {
+		configOverrides.CurrentContext = d.Context
 	}
 
-	if opts.Cluster != "" {
-		configOverrides.Context.Cluster = opts.Cluster
+	if d.Cluster != "" {
+		configOverrides.Context.Cluster = d.Cluster
 	}
 
-	if opts.Token != "" {
-		configOverrides.AuthInfo.Token = opts.Token
+	if d.Token != "" {
+		configOverrides.AuthInfo.Token = d.Token
 	}
 
 	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
-	if opts.Namespace == "" {
-		opts.Namespace, _, _ = clientConfig.Namespace()
+	if d.Namespace == "" {
+		d.Namespace, _, _ = clientConfig.Namespace()
 	}
 	return clientConfig.ClientConfig()
 }

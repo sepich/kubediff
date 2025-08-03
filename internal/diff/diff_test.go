@@ -117,9 +117,7 @@ func TestExecuteDiff(t *testing.T) {
 	}()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.envDiffCmd != "" {
-				os.Setenv("KUBECTL_EXTERNAL_DIFF", tt.envDiffCmd)
-			}
+			os.Setenv("KUBECTL_EXTERNAL_DIFF", tt.envDiffCmd)
 
 			originalStdout := os.Stdout
 			_, w, _ := os.Pipe()
@@ -129,15 +127,15 @@ func TestExecuteDiff(t *testing.T) {
 				os.Stdout = originalStdout
 			}()
 
-			gotDiff, gotErr := executeDiff(fileObj, tt.clusterObj)
+			gotDiff, gotErr := HasDiff(fileObj, tt.clusterObj)
 			if tt.expectedError && gotErr == nil {
-				t.Errorf("%s: executeDiff() expected error but got nil", tt.name)
+				t.Errorf("%s: HasDiff() expected error but got nil", tt.name)
 			}
 			if !tt.expectedError && gotErr != nil {
-				t.Errorf("%s: executeDiff() unexpected error = %v", tt.name, gotErr)
+				t.Errorf("%s: HasDiff() unexpected error = %v", tt.name, gotErr)
 			}
 			if gotDiff != tt.expectedDiff {
-				t.Errorf("%s: executeDiff() diff = %v, expected %v", tt.name, gotDiff, tt.expectedDiff)
+				t.Errorf("%s: HasDiff() diff = %v, expected %v", tt.name, gotDiff, tt.expectedDiff)
 			}
 		})
 	}

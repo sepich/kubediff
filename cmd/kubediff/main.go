@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/sepich/kubediff/internal/filter"
+	"github.com/sepich/kubediff/internal/store"
 	"os"
 
 	"github.com/prometheus/common/version"
@@ -10,16 +12,17 @@ import (
 )
 
 func main() {
-	opts := &diff.Options{}
-
-	pflag.StringSliceVarP(&opts.Filename, "filename", "f", []string{}, "Filename, directory, or URL to files to compare")
-	pflag.BoolVarP(&opts.Recursive, "recursive", "R", false, "Process the directory used in -f, --filename recursively")
-	pflag.BoolVarP(&opts.SkipSecrets, "skip-secrets", "", false, "Skip comparing of Secrets (no permission to read them)")
-	pflag.StringVar(&opts.Cluster, "cluster", "", "The name of the kubeconfig cluster to use")
-	pflag.StringVar(&opts.Context, "context", "", "The name of the kubeconfig context to use")
-	pflag.StringVar(&opts.Kubeconfig, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
-	pflag.StringVarP(&opts.Namespace, "namespace", "n", "", "If present, the namespace scope for this CLI request")
-	pflag.StringVar(&opts.Token, "token", "", "Bearer token for authentication to the API server")
+	var err error
+	d := &diff.Diff{}
+	var filename = pflag.StringSliceP("filename", "f", []string{}, "Filename, directory, or URL to files to compare")
+	var recursive = pflag.BoolP("recursive", "R", false, "Process the directory used in -f, --filename recursively")
+	pflag.BoolVarP(&d.SkipSecrets, "skip-secrets", "", false, "Skip comparing of Secrets (no permission to read them)")
+	pflag.StringVar(&d.Cluster, "cluster", "", "The name of the kubeconfig cluster to use")
+	pflag.StringVar(&d.Context, "context", "", "The name of the kubeconfig context to use")
+	pflag.StringVar(&d.Kubeconfig, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
+	pflag.StringVarP(&d.Namespace, "namespace", "n", "", "If present, the namespace scope for this CLI request")
+	pflag.StringVar(&d.Token, "token", "", "Bearer token for authentication to the API server")
+	var filterfile = pflag.StringP("filter-file", "", "", "Path to a filter yml file to apply defaults before comparing (by default built-in is used)")
 	var ver = pflag.BoolP("version", "v", false, "Show version and exit")
 	pflag.Parse()
 	if *ver {
@@ -27,12 +30,22 @@ func main() {
 		os.Exit(0)
 	}
 
-	if len(opts.Filename) == 0 {
+	if len(*filename) == 0 {
 		fmt.Fprintf(os.Stderr, "Error: must specify at least one filename\n")
-		os.Exit(1)
+		os.Exit(2)
+	}
+	if d.Files, err = store.ExpandToFilenames(*filename, *recursive); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to read dir: %v\n", err)
+		os.Exit(2)
 	}
 
-	exitCode, err := diff.Run(opts)
+	d.Filter, err = filter.NewFilter(*filterfile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to read filter-file: %v\n", err)
+		os.Exit(2)
+	}
+
+	exitCode, err := d.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}

@@ -3,6 +3,7 @@ kubediff
 
 This is a `kubectl diff` alternative that does not [need patch permission](https://github.com/kubernetes/kubectl/issues/981) to operate.  
 Ideal for CI environments with **read-only** access where you want to view diffs in a merge request.
+"No Secrets" access mode is also supported.
 
 ### How it works
 You can use the same `-f` and `-R` to specify k8s yaml file of dir with files
@@ -13,6 +14,7 @@ You can use the same `-f` and `-R` to specify k8s yaml file of dir with files
 - executes command from `KUBECTL_EXTERNAL_DIFF` env, same as `kubectl` (default is `diff -u -N`, but you can use [dyff](https://github.com/homeport/dyff?tab=readme-ov-file#use-cases-and-examples) for more compact output)
 - exit code is: 0=no diff, 1=diff found, >1=error
 
+### Filter
 Still there are some false-positive diff due to:
 - Default values, which are only assigned after object is created:
   ```diff
@@ -33,7 +35,7 @@ Still there are some false-positive diff due to:
      template:
   ```
 - Mutation, done in cluster in the admission path  
-Example for [cert-manager.io/inject-ca-from-secret](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) mutation done by cert-manager injector for ValidatingWebhookConfiguration:
+Example for [cert-manager.io/inject-ca-from-secret](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) mutation done by cert-manager injector for `ValidatingWebhookConfiguration`:
   ```diff
    - admissionReviewVersions:
      - v1
@@ -42,10 +44,18 @@ Example for [cert-manager.io/inject-ca-from-secret](https://cert-manager.io/docs
        service:
          name: cert-manager-webhook
   ```
-That's why `patch` permission is needed for `kubectl diff`.
+And that's why `patch` permission is needed for `kubectl diff`.
+
+To reduce amount of false-positives, `kubediff` has built-in filter with "defaults" for most used k8s Kinds:  
+- you can see it in [filter.yml](./internal/diff/filter.yml)
+- it works like this:
+  - when `Yaml file` has no field defined, and `cluster object` has value same as in `filter.yml` (i.e it is a default value) then field is skipped in diff
+  - filter value `"*"` for field means - skip any `cluster` value, if not defined in `yaml`
+- to see full non-filtered diff (as above) you can specify empty file for filter: `--filter-file=/dev/null`
+- to hide changes caused by your custom Mutations use your own file in `--filter-file=`
 
 ### Usage
-You can download precompiled binary from [Releases](https://github.com/sepich/kubediff/releases) section or compile via:
+You can download precompiled binary from [Releases](https://github.com/sepich/kubediff/releases) section or compile locally via:
 ```bash
 go install github.com/sepich/kubediff/cmd/kubediff@latest
 ```

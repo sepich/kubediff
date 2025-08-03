@@ -1,20 +1,54 @@
-package diff
+package filter
 
 import (
+	_ "embed"
+	"errors"
+	"github.com/sepich/kubediff/internal/store"
+	"os"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"strings"
 )
 
-// applyFiltering applies filtering rules to drop fields from clusterObj, if not set in fileObj
-func applyFiltering(fileObj, clusterObj *unstructured.Unstructured) *unstructured.Unstructured {
-	kind := fileObj.GetKind()
-	filterObj, exists := filterObjects[kind]
-	if !exists {
-		return clusterObj
-	}
+//go:embed filter.yml
+var builtinYAML []byte
 
+type Filter struct {
+	filterObjects map[string]*unstructured.Unstructured
+}
+
+func NewFilter(fn string) (*Filter, error) {
+	var err error
+	f := &Filter{
+		filterObjects: make(map[string]*unstructured.Unstructured),
+	}
+	data := builtinYAML
+	if fn != "" {
+		data, err = os.ReadFile(fn)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for obj := range store.YamlToObj(strings.NewReader(string(data))) {
+		if obj == nil {
+			return nil, errors.New("failed to decode YAML")
+		}
+		f.filterObjects[obj.GetKind()] = obj
+	}
+	return f, nil
+}
+
+// Apply applies filtering rules to drop fields from clusterObj, if not set in fileObj
+func (f Filter) Apply(fileObj, clusterObj *unstructured.Unstructured) {
+	normalizeObject(clusterObj)
+	normalizeObject(fileObj)
+
+	kind := fileObj.GetKind()
+	filterObj, exists := f.filterObjects[kind]
+	if !exists {
+		return
+	}
 	applyFilteringRecursive(fileObj.Object, clusterObj.Object, filterObj.Object)
-	return clusterObj
 }
 
 // applyFilteringRecursive recursively applies filtering rules
@@ -123,6 +157,44 @@ func handleSpecialCases(fileData, clusterData map[string]any, filterKey string, 
 	if filterKey == "listKind" && !fileHasKey {
 		if kind, ok := fileData["kind"]; ok {
 			fileData["listKind"] = kind.(string) + "List"
+		}
+	}
+}
+
+func normalizeObject(obj *unstructured.Unstructured) {
+	delete(obj.Object, "status")
+
+	if metadata, ok := obj.Object["metadata"].(map[string]interface{}); ok {
+		delete(metadata, "resourceVersion")
+		delete(metadata, "uid")
+		delete(metadata, "selfLink")
+		delete(metadata, "creationTimestamp")
+		delete(metadata, "generation")
+		delete(metadata, "managedFields")
+		delete(metadata, "namespace")
+
+		// Remove ignored annotations
+		if annotations, ok := metadata["annotations"].(map[string]interface{}); ok {
+			delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
+			delete(annotations, "deployment.kubernetes.io/revision")
+			delete(annotations, "meta.helm.sh/release-name")
+			delete(annotations, "meta.helm.sh/release-namespace")
+
+			// Remove empty annotations map
+			if len(annotations) == 0 {
+				delete(metadata, "annotations")
+			}
+		}
+
+		// Remove ignored labels
+		if labels, ok := metadata["labels"].(map[string]interface{}); ok {
+			delete(labels, "helm.sh/chart")
+			delete(labels, "app.kubernetes.io/managed-by")
+
+			// Remove empty labels map
+			if len(labels) == 0 {
+				delete(metadata, "labels")
+			}
 		}
 	}
 }

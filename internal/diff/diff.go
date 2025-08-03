@@ -2,11 +2,12 @@ package diff
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/sepich/kubediff/internal/filter"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,43 +17,26 @@ import (
 	kyaml "sigs.k8s.io/yaml"
 )
 
-//go:embed filter.yml
-var filterYAML []byte
-
-var filterObjects map[string]*unstructured.Unstructured
-
-func init() {
-	filterObjects = make(map[string]*unstructured.Unstructured)
-	for obj := range objectsFromYaml(strings.NewReader(string(filterYAML))) {
-		filterObjects[obj.GetKind()] = obj
-	}
-}
-
-type Options struct {
-	Filename    []string
-	Recursive   bool
+type Diff struct {
+	Files       []string
 	Cluster     string
 	Context     string
 	Kubeconfig  string
 	Namespace   string
 	Token       string
 	SkipSecrets bool
+	Filter      *filter.Filter
 }
 
-func Run(opts *Options) (int, error) {
-	files, err := expandFilenames(opts.Filename, opts.Recursive)
-	if err != nil {
-		return 2, fmt.Errorf("failed to expand filenames: %w", err)
-	}
-
-	dynamicClient, discoveryClient, err := getClients(opts)
+func (d *Diff) Run() (int, error) {
+	dynamicClient, discoveryClient, err := d.getClients()
 	if err != nil {
 		return 2, fmt.Errorf("failed to get clients: %w", err)
 	}
 
 	hasDiff := false
-	for _, file := range files {
-		diffFound, err := processFile(file, opts, dynamicClient, discoveryClient)
+	for _, file := range d.Files {
+		diffFound, err := d.processFile(file, dynamicClient, discoveryClient)
 		if err != nil {
 			return 2, fmt.Errorf("failed to process file %s: %w", file, err)
 		}
@@ -68,10 +52,10 @@ func Run(opts *Options) (int, error) {
 }
 
 // diffObject compares a obj with the cluster state, and returns true if there are differences.
-func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface) (bool, error) {
+func (d *Diff) diffObject(fileObj *unstructured.Unstructured, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface) (bool, error) {
 	gvk := fileObj.GroupVersionKind()
-	if gvk.Kind == "Secret" && gvk.Group == "" && opts.SkipSecrets {
-		fmt.Fprintf(os.Stderr, "Skipping Secret: %s/%s\n", opts.Namespace, fileObj.GetName())
+	if gvk.Kind == "Secret" && gvk.Group == "" && d.SkipSecrets {
+		fmt.Fprintf(os.Stderr, "Skipping Secret: %s/%s\n", d.Namespace, fileObj.GetName())
 		return false, nil
 	}
 
@@ -81,8 +65,8 @@ func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient
 	}
 
 	namespace := fileObj.GetNamespace()
-	if namespace == "" && opts.Namespace != "" && isNamespaced {
-		namespace = opts.Namespace
+	if namespace == "" && d.Namespace != "" && isNamespaced {
+		namespace = d.Namespace
 	}
 
 	var resourceInterface dynamic.ResourceInterface
@@ -102,12 +86,12 @@ func diffObject(fileObj *unstructured.Unstructured, opts *Options, dynamicClient
 		}
 	}
 
-	clusterObj = applyFiltering(fileObj, clusterObj)
-	return executeDiff(normalizeObject(fileObj), normalizeObject(clusterObj))
+	d.Filter.Apply(fileObj, clusterObj)
+	return HasDiff(fileObj, clusterObj)
 }
 
-// executeDiff runs the diff command on the provided file and cluster objects, and returns true if differences are found.
-func executeDiff(fileObj, clusterObj *unstructured.Unstructured) (bool, error) {
+// HasDiff runs the diff command on the provided file and cluster objects, and returns true if differences are found.
+func HasDiff(fileObj, clusterObj *unstructured.Unstructured) (bool, error) {
 	tmpDir, err := os.MkdirTemp("", "kubediff-")
 	if err != nil {
 		return false, fmt.Errorf("failed to create temp directory: %w", err)

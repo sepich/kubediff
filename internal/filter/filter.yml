@@ -213,7 +213,7 @@ spec:
     - apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        creationTimestamp: null
+        creationTimestamp: "*"
       spec:
         volumeMode: Filesystem
 ---
@@ -224,7 +224,7 @@ spec:
   failedJobsHistoryLimit: 1
   jobTemplate:
     metadata:
-      creationTimestamp: null
+      creationTimestamp: "*"
       annotations:
         kubectl.kubernetes.io/restartedAt: "*"
         meta.helm.sh/release-name: "*"
@@ -235,7 +235,7 @@ spec:
     spec:
       template:
         metadata:
-          creationTimestamp: null
+          creationTimestamp: "*"
           annotations:
             kubectl.kubernetes.io/restartedAt: "*"
             meta.helm.sh/release-name: "*"
@@ -349,7 +349,7 @@ spec:
   suspend: false
   template:
     metadata:
-      creationTimestamp: null
+      creationTimestamp: "*"
       annotations:
         kubectl.kubernetes.io/restartedAt: "*"
         meta.helm.sh/release-name: "*"

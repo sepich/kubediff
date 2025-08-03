@@ -1,6 +1,8 @@
-package diff
+package filter
 
 import (
+	"github.com/sepich/kubediff/internal/store"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -188,29 +190,31 @@ status:
 		},
 	}
 
+	filter, err := NewFilter("")
+	if err != nil {
+		t.Fatalf("failed to create filter: %v", err)
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var fileObj, clusterObj *unstructured.Unstructured
-			for obj := range objectsFromYaml(strings.NewReader(tt.fileYaml)) {
+			for obj := range store.YamlToObj(strings.NewReader(tt.fileYaml)) {
 				if obj == nil {
 					t.Fatal("failed to decode YAML")
 				}
 				fileObj = obj
 			}
-			for obj := range objectsFromYaml(strings.NewReader(tt.clusterYaml)) {
+			for obj := range store.YamlToObj(strings.NewReader(tt.clusterYaml)) {
 				if obj == nil {
 					t.Fatal("failed to decode YAML")
 				}
 				clusterObj = obj
 			}
 
-			clusterObj = applyFiltering(fileObj, clusterObj)
-			diffFound, err := executeDiff(normalizeObject(fileObj), normalizeObject(clusterObj))
-			if err != nil {
-				t.Fatal("failed to execute diff: ", err)
-			}
-			if diffFound != tt.hasDiff {
-				t.Errorf("expected diff: %v, got: %v", tt.hasDiff, diffFound)
+			filter.Apply(fileObj, clusterObj)
+			eq := reflect.DeepEqual(fileObj, clusterObj)
+			if eq == tt.hasDiff {
+				t.Errorf("expected diff: %v, got: %v\n%v\n%v", tt.hasDiff, !eq, fileObj, clusterObj)
 			}
 		})
 	}
