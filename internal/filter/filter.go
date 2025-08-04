@@ -179,6 +179,7 @@ func normalizeObject(obj *unstructured.Unstructured) {
 			delete(annotations, "deployment.kubernetes.io/revision")
 			delete(annotations, "meta.helm.sh/release-name")
 			delete(annotations, "meta.helm.sh/release-namespace")
+			delete(annotations, "policies.kyverno.io/last-applied-patches")
 
 			// Remove empty annotations map
 			if len(annotations) == 0 {

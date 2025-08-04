@@ -216,6 +216,7 @@ spec:
         creationTimestamp: "*"
       spec:
         volumeMode: Filesystem
+      status: "*"
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -743,6 +744,7 @@ webhooks:
     namespaceSelector: {}
     objectSelector: {}
     reinvocationPolicy: Never
+    matchPolicy: Equivalent
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -754,6 +756,7 @@ webhooks:
     namespaceSelector: {}
     objectSelector: {}
     timeoutSeconds: 10
+    matchPolicy: Equivalent
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -789,6 +792,8 @@ kind: Secret
 metadata:
   annotations:
     kubernetes.io/service-account.uid: "*"
+  labels:
+    kubernetes.io/legacy-token-last-used: "*"
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

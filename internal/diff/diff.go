@@ -18,17 +18,20 @@ import (
 )
 
 type Diff struct {
-	Files       []string
-	Cluster     string
-	Context     string
-	Kubeconfig  string
-	Namespace   string
-	Token       string
-	SkipSecrets bool
-	Filter      *filter.Filter
+	Files           []string
+	Cluster         string
+	Context         string
+	Kubeconfig      string
+	Namespace       string
+	Token           string
+	SkipSecrets     bool
+	Filter          *filter.Filter
+	apiResourceList map[string]*metav1.APIResourceList
 }
 
 func (d *Diff) Run() (int, error) {
+	d.apiResourceList = make(map[string]*metav1.APIResourceList)
+
 	dynamicClient, discoveryClient, err := d.getClients()
 	if err != nil {
 		return 2, fmt.Errorf("failed to get clients: %w", err)
@@ -59,7 +62,7 @@ func (d *Diff) diffObject(fileObj *unstructured.Unstructured, dynamicClient dyna
 		return false, nil
 	}
 
-	gvr, isNamespaced, err := getGVRAndScope(gvk, discoveryClient)
+	gvr, isNamespaced, err := d.getGVRAndScope(gvk, discoveryClient)
 	if err != nil {
 		return false, fmt.Errorf("failed to get GVR for %s: %w", gvk, err)
 	}
@@ -104,7 +107,7 @@ func HasDiff(fileObj, clusterObj *unstructured.Unstructured) (bool, error) {
 	}
 
 	clusterYAML := []byte{}
-	if clusterObj.Object != nil && len(clusterObj.Object) != 0 {
+	if len(clusterObj.Object) != 0 {
 		var err error
 		clusterYAML, err = kyaml.Marshal(clusterObj.Object)
 		if err != nil {

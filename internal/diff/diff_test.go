@@ -118,15 +118,6 @@ func TestExecuteDiff(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Setenv("KUBECTL_EXTERNAL_DIFF", tt.envDiffCmd)
-
-			originalStdout := os.Stdout
-			_, w, _ := os.Pipe()
-			os.Stdout = w
-			defer func() {
-				w.Close()
-				os.Stdout = originalStdout
-			}()
-
 			gotDiff, gotErr := HasDiff(fileObj, tt.clusterObj)
 			if tt.expectedError && gotErr == nil {
 				t.Errorf("%s: HasDiff() expected error but got nil", tt.name)
