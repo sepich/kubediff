@@ -1,7 +1,6 @@
 package diff
 
 import (
-	"errors"
 	"fmt"
 	"net"
 
@@ -69,11 +68,9 @@ func isRetriableError(err error) bool {
 		return true
 	}
 
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		if opErr.Timeout() || opErr.Temporary() {
-			return true
-		}
+	if status, ok := err.(net.Error); ok && (status.Timeout() || status.Temporary()) {
+		return true
 	}
+
 	return false
 }
