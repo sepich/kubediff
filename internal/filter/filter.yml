@@ -811,3 +811,15 @@ spec:
           averageUtilization: 80
           type: Utilization
       type: Resource
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+spec:
+  acme:
+    preferredChain: ""
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+spec:
+  acme:
+    preferredChain: ""

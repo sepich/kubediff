@@ -1,7 +1,11 @@
 package diff
 
 import (
+	"errors"
 	"fmt"
+	"net"
+
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -54,4 +58,22 @@ func (d *Diff) buildConfig() (*rest.Config, error) {
 		d.Namespace, _, _ = clientConfig.Namespace()
 	}
 	return clientConfig.ClientConfig()
+}
+
+func isRetriableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if k8serr.IsServerTimeout(err) || k8serr.IsServiceUnavailable(err) || k8serr.IsTimeout(err) {
+		return true
+	}
+
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		if opErr.Timeout() || opErr.Temporary() {
+			return true
+		}
+	}
+	return false
 }

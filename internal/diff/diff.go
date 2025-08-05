@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/sepich/kubediff/internal/filter"
 
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/util/retry"
 	kyaml "sigs.k8s.io/yaml"
 )
 
@@ -79,8 +81,19 @@ func (d *Diff) diffObject(fileObj *unstructured.Unstructured, dynamicClient dyna
 		resourceInterface = dynamicClient.Resource(*gvr)
 	}
 
-	ctx := context.TODO()
-	clusterObj, err := resourceInterface.Get(ctx, fileObj.GetName(), metav1.GetOptions{})
+	var clusterObj *unstructured.Unstructured
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(120*time.Second))
+	defer cancel()
+	err = retry.OnError(retry.DefaultRetry, func(err error) bool {
+		if isRetriableError(err) {
+			fmt.Fprintf(os.Stderr, "Get resource %s/%s error: %v, will retry...\n", gvk.Kind, fileObj.GetName(), err)
+			return true
+		}
+		return false
+	}, func() error {
+		clusterObj, err = resourceInterface.Get(ctx, fileObj.GetName(), metav1.GetOptions{})
+		return err
+	})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			clusterObj = &unstructured.Unstructured{}
