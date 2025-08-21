@@ -745,6 +745,7 @@ webhooks:
     objectSelector: {}
     reinvocationPolicy: Never
     matchPolicy: Equivalent
+    timeoutSeconds: 10
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -763,6 +764,10 @@ kind: CustomResourceDefinition
 spec:
   conversion:
     strategy: None
+    webhook:
+      clientConfig:
+        service:
+          port: 443
   names:
     listKind: "$"
 ---
