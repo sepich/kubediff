@@ -828,3 +828,18 @@ kind: Issuer
 spec:
   acme:
     preferredChain: ""
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+spec:
+  admission: true
+  background: true
+  emitWarning: false
+  validationFailureAction: Audit
+  rules:
+    - skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+      context:
+        - apiCall:
+            method: GET

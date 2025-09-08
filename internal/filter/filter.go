@@ -3,11 +3,11 @@ package filter
 import (
 	_ "embed"
 	"errors"
-	"github.com/sepich/kubediff/internal/store"
 	"os"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"strings"
+
+	"github.com/sepich/kubediff/internal/store"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 //go:embed filter.yml
@@ -61,6 +61,10 @@ func applyFilteringRecursive(fileData, clusterData, filterData map[string]any) {
 		fileValue, fileHasKey := fileData[filterKey]
 
 		switch fv := filterValue.(type) {
+		case bool:
+			if !fileHasKey && (clusterValue == fv) {
+				delete(clusterData, filterKey)
+			}
 		case string:
 			if !fileHasKey && (clusterValue == fv || fv == "*") {
 				delete(clusterData, filterKey)
