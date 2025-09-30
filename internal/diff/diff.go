@@ -66,7 +66,9 @@ func (d *Diff) diffObject(fileObj *unstructured.Unstructured, dynamicClient dyna
 
 	gvr, isNamespaced, err := d.getGVRAndScope(gvk, discoveryClient)
 	if err != nil {
-		return false, fmt.Errorf("failed to get GVR for %s: %w", gvk, err)
+		fmt.Fprintf(os.Stderr, "Warning: could not find GVR for %s: %v\n", gvk.String(), err)
+		// failed to get GVR means no CRD for this object yet, = full diff instead of error
+		return HasDiff(fileObj, &unstructured.Unstructured{})
 	}
 
 	namespace := fileObj.GetNamespace()
